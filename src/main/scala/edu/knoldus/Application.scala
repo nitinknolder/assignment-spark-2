@@ -16,12 +16,22 @@ object Application {
     val customerRecord = customerRdd.map (x => (x (0).toInt, CustomerField (x (0).toInt, x (1), x (2), x (3))))
     val salesRecord = salesRdd.map (x => (x (1).toInt, SalesFields (TimeConversion.year (x (0).toInt),
       TimeConversion.month (x (0).toInt), TimeConversion.day (x (0).toInt), x (1).toInt, x (2).toLong)))
-
-
     val rddJoin = customerRecord.join (salesRecord)
-    rddJoin.repartition (1).saveAsTextFile ("/home/knoldus/Desktop/SparkAssignment/Output")
 
-    //    join_rdd.foreach (println)
+    val yearlyRecord = rddJoin.map(x => ((x._2._1.state, x._2._2.year), x._2._2.salesPrice))
+      .reduceByKey(_ + _).map(y => s"${y._1._1}#${y._1._2}###${y._2}")
+
+    val monthlyRecord = rddJoin.map(x => ((x._2._1.state, x._2._2.year, x._2._2.month), x._2._2.salesPrice))
+      .reduceByKey(_ + _).map(y => s"${y._1._1}#${y._1._2}#${y._1._3}##${y._2}")
+
+    val dailyRecord = rddJoin.map(x => ((x._2._1.state, x._2._2.year, x._2._2.month, x._2._2.day), x._2._2.salesPrice))
+      .reduceByKey(_ + _).map(y => s"${y._1._1}#${y._1._2}#${y._1._3}#${y._1._4}#${y._2}")
+
+    val result= yearlyRecord union  monthlyRecord union  dailyRecord
+
+    result.repartition(1).saveAsTextFile("/home/knoldus/Desktop/SparkAssignment/outputFile.txt")
+
+
     sparkContext.stop ()
   }
 }
